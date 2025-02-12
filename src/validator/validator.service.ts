@@ -1,106 +1,162 @@
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
-import axios from 'axios';
-import { StandardMerkleTree } from '@openzeppelin/merkle-tree';
+import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common'
+import axios from 'axios'
+import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
+import { CLIENT_RENEG_LIMIT } from 'tls'
+import { keccak256 } from 'js-sha3'
+import { ConfigService } from '@nestjs/config'
 
-interface WalletData {
-  address: string;
-  score: number;
-  proof: string[];
+interface GetWalletProof {
+  wallet_address: string
+  score: string
+  index: string
+  proof: string[]
 }
 
-interface ExternalApiResponse {
-  wallets: WalletData[];
-  merkleRoot: string;
+interface GetRandWallets {
+  wallet_addresses: string[]
 }
 
 @Injectable()
 export class ValidatorService {
-  private readonly logger = new Logger(ValidatorService.name);
+  private readonly logger = new Logger(ValidatorService.name)
+  zscoreDbServerUrl: string
+  constructor(private readonly configService: ConfigService) {
+    this.zscoreDbServerUrl = this.configService.get<string>(
+      'ZSCORE_DB_SERVER_URL'
+    )!
+  }
 
   async validateWallets(): Promise<{ isApproved: boolean }> {
     try {
-      // Fetch data from external API
-      const walletData = await this.fetchWalletData();
-      
-      if (!walletData || !walletData.wallets || walletData.wallets.length !== 3) {
-        this.logger.error('Invalid wallet data received from external API');
+      const walletProofs = await this.fetchWalletData()
+      const { root } = await (
+        await axios.get(`${this.zscoreDbServerUrl}/leaf/root`)
+      ).data
+
+      if (!walletProofs || walletProofs.length !== 3) {
+        this.logger.error('Invalid wallet data received from external API')
         throw new HttpException(
           'Invalid wallet data received from external API',
-          HttpStatus.BAD_REQUEST,
-        );
+          HttpStatus.BAD_REQUEST
+        )
       }
 
-      // Count how many wallets are valid
-      let validWalletCount = 0;
+      let validWalletCount = 0
 
-      // Validate each wallet's merkle proof
-      for (const wallet of walletData.wallets) {
+      for (const wallet of walletProofs) {
         try {
           const isValid = this.verifyMerkleProof(
             wallet.proof,
-            walletData.merkleRoot,
-            wallet.address,
+            root,
+            wallet.wallet_address,
             wallet.score,
-          );
-          
+            wallet.index
+          )
+
+          console.log({ isValid })
+
           if (isValid) {
-            validWalletCount++;
+            validWalletCount++
           }
-          
-          this.logger.debug(`Wallet ${wallet.address} validation result: ${isValid}`);
+
+          this.logger.debug(
+            `Wallet ${wallet.wallet_address} validation result: ${isValid}`
+          )
         } catch (error) {
-          this.logger.error(`Error validating wallet ${wallet.address}: ${error.message}`);
-          // Continue with next wallet even if one fails
-          continue;
+          this.logger.error(
+            `Error validating wallet ${wallet.wallet_address}: ${error.message}`
+          )
+
+          continue
         }
       }
 
-      // Return true if at least 2 wallets are valid
-      return { isApproved: validWalletCount >= 2 };
+      return { isApproved: validWalletCount >= 2 }
     } catch (error) {
       if (error instanceof HttpException) {
-        throw error;
+        throw error
       }
-      
-      this.logger.error(`Error in validateWallets: ${error.message}`);
+
+      this.logger.error(`Error in validateWallets: ${error.message}`)
       throw new HttpException(
         'Error validating wallets',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+        HttpStatus.INTERNAL_SERVER_ERROR
+      )
     }
   }
 
-  private async fetchWalletData(): Promise<ExternalApiResponse> {
+  private async fetchWalletData(): Promise<GetWalletProof[]> {
     try {
-      // Replace with your actual API endpoint
-      const response = await axios.get<ExternalApiResponse>('YOUR_API_ENDPOINT');
-      return response.data;
+      const url = `${this.zscoreDbServerUrl}/leaf/rand?seed=${this.getSeed()}`
+      const response = await axios.get<GetRandWallets>(url)
+      const proofReqs = []
+      for (let wallet of response.data.wallet_addresses) {
+        let url = `${this.zscoreDbServerUrl}/leaf/score?wallet_address=${wallet}`
+        proofReqs.push(axios.get<GetWalletProof>(url))
+      }
+
+      return (await Promise.all(proofReqs)).map((res) => res.data)
     } catch (error) {
-      this.logger.error(`Error fetching wallet data: ${error.message}`);
+      this.logger.error(`Error fetching wallet data: ${error.message}`)
       throw new HttpException(
         'Failed to fetch wallet data from external API',
-        HttpStatus.BAD_GATEWAY,
-      );
+        HttpStatus.BAD_GATEWAY
+      )
     }
   }
 
   private verifyMerkleProof(
     proof: string[],
     root: string,
-    address: string,
-    score: number,
+    walletAddress: string,
+    score: string,
+    index: string
   ): boolean {
-    try {
-      // Verify the merkle proof using StandardMerkleTree.verify
-      return StandardMerkleTree.verify(
-        root, 
-        ['address', 'uint256'], 
-        [address, score.toString()], 
-        proof
-      );
-    } catch (error) {
-      this.logger.error(`Error verifying merkle proof: ${error.message}`);
-      return false;
+    const proofBuffers = proof.map(this.hexToBuffer)
+    const rootBuffer = this.hexToBuffer(root)
+
+    const leaf = this.hashLeaf(walletAddress, score, index)
+
+    return this.verifyProof(leaf, proofBuffers, rootBuffer, index)
+  }
+
+  private getSeed(): string {
+    return (Math.floor(Math.random() * 10_000_000) + 1).toString()
+  }
+
+  private hashLeaf(walletAddress: string, score: any, index: any) {
+    const leafObject = {
+      wallet_address: walletAddress,
+      score: score,
+      index: index,
     }
+    const leafString = JSON.stringify(leafObject)
+    console.log(leafString)
+    const hashHex = keccak256(leafString)
+    return Buffer.from(hashHex, 'hex')
+  }
+
+  private verifyProof(leaf: any, proof: any[], root: any, index: any) {
+    let computedHash = leaf
+
+    for (const sibling of proof) {
+      if (index % 2 === 0) {
+        computedHash = Buffer.from(
+          keccak256.arrayBuffer(Buffer.concat([computedHash, sibling]))
+        )
+      } else {
+        computedHash = Buffer.from(
+          keccak256.arrayBuffer(Buffer.concat([sibling, computedHash]))
+        )
+      }
+
+      index = Math.floor(index / 2)
+    }
+
+    return computedHash.equals(root)
+  }
+
+  private hexToBuffer(hexString: string) {
+    return Buffer.from(hexString.replace(/^0x/, ''), 'hex')
   }
 }

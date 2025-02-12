@@ -1,7 +1,14 @@
-import { Module } from '@nestjs/common';
-import { ValidatorModule } from './validator/validator.module';
+import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
+import { ValidatorModule } from './validator/validator.module'
 
 @Module({
-  imports: [ValidatorModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    ValidatorModule,
+  ],
 })
 export class AppModule {}
