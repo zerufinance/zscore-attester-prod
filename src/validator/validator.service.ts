@@ -1,9 +1,8 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common'
 import axios from 'axios'
-import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
-import { CLIENT_RENEG_LIMIT } from 'tls'
 import { keccak256 } from 'js-sha3'
 import { ConfigService } from '@nestjs/config'
+import ethers from 'ethers'
 
 interface GetWalletProof {
   wallet_address: string
@@ -124,16 +123,10 @@ export class ValidatorService {
     return (Math.floor(Math.random() * 10_000_000) + 1).toString()
   }
 
-  private hashLeaf(walletAddress: string, score: any, index: any) {
-    const leafObject = {
-      wallet_address: walletAddress,
-      score: score,
-      index: index,
-    }
-    const leafString = JSON.stringify(leafObject)
-    console.log(leafString)
-    const hashHex = keccak256(leafString)
-    return Buffer.from(hashHex, 'hex')
+  private hashLeaf(walletAddress: string, score: any) {
+    return ethers.keccak256(
+      ethers.solidityPacked(['address', 'uint256'], [walletAddress, score])
+    )
   }
 
   private verifyProof(leaf: any, proof: any[], root: any, index: any) {
