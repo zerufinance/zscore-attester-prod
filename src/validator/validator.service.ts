@@ -1,9 +1,8 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common'
 import axios from 'axios'
-import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
-import { CLIENT_RENEG_LIMIT } from 'tls'
-import { keccak256 } from 'js-sha3'
 import { ConfigService } from '@nestjs/config'
+import { ethers } from 'ethers'
+const keccak256 = require('keccak256')
 
 interface GetWalletProof {
   wallet_address: string
@@ -43,15 +42,13 @@ export class ValidatorService {
 
       let validWalletCount = 0
 
+      console.log({ root })
+      console.log(walletProofs)
+
       for (const wallet of walletProofs) {
         try {
-          const isValid = this.verifyMerkleProof(
-            wallet.proof,
-            root,
-            wallet.wallet_address,
-            wallet.score,
-            wallet.index
-          )
+          const leaf = this.hashLeaf(wallet.wallet_address, wallet.score)
+          const isValid = this.verifyMerkleProof(leaf, wallet.proof, root)
 
           console.log({ isValid })
 
@@ -85,6 +82,38 @@ export class ValidatorService {
     }
   }
 
+  private verifyMerkleProof(
+    leaf: string,
+    proof: string[],
+    root: string,
+    sortPairs: boolean = true
+  ): boolean {
+    let computedHash = Buffer.from(leaf.replace(/^0x/, ''), 'hex')
+    const rootBuffer = Buffer.from(root.replace(/^0x/, ''), 'hex')
+
+    // Iterate over each proof element and hash them together.
+    for (const proofElementHex of proof) {
+      const proofElement = Buffer.from(
+        proofElementHex.replace(/^0x/, ''),
+        'hex'
+      )
+
+      // If using sorted pairs, sort the two buffers before concatenating.
+      if (sortPairs) {
+        if (Buffer.compare(computedHash, proofElement) < 0) {
+          computedHash = keccak256(Buffer.concat([computedHash, proofElement]))
+        } else {
+          computedHash = keccak256(Buffer.concat([proofElement, computedHash]))
+        }
+      } else {
+        // Non-sorted: simply concatenate in the provided order.
+        computedHash = keccak256(Buffer.concat([computedHash, proofElement]))
+      }
+    }
+
+    return computedHash.equals(rootBuffer)
+  }
+
   private async fetchWalletData(): Promise<GetWalletProof[]> {
     try {
       const url = `${this.zscoreDbServerUrl}/leaf/rand?seed=${this.getSeed()}`
@@ -105,58 +134,33 @@ export class ValidatorService {
     }
   }
 
-  private verifyMerkleProof(
-    proof: string[],
-    root: string,
-    walletAddress: string,
-    score: string,
-    index: string
-  ): boolean {
-    const proofBuffers = proof.map(this.hexToBuffer)
-    const rootBuffer = this.hexToBuffer(root)
+  private verifyProof(leaf: Buffer, proof: Buffer[], root: Buffer): boolean {
+    let computedHash = leaf
+    for (const sibling of proof) {
+      // Sort the two 32-byte hashes just like Solidity does (lexicographically)
+      const combined =
+        Buffer.compare(computedHash, sibling) < 0
+          ? Buffer.concat([computedHash, sibling])
+          : Buffer.concat([sibling, computedHash])
+      // Compute the new hash
+      const hashHex = ethers.keccak256(combined)
+      computedHash = Buffer.from(hashHex.slice(2), 'hex')
+    }
+    return computedHash.equals(root)
+  }
 
-    const leaf = this.hashLeaf(walletAddress, score, index)
+  private hexToBuffer(hexString: string): Buffer {
+    return Buffer.from(hexString.replace(/^0x/, ''), 'hex')
+  }
 
-    return this.verifyProof(leaf, proofBuffers, rootBuffer, index)
+  private hashLeaf(walletAddress: string, score: any) {
+    return ethers.solidityPackedKeccak256(
+      ['address', 'uint256'],
+      [walletAddress, score]
+    )
   }
 
   private getSeed(): string {
     return (Math.floor(Math.random() * 10_000_000) + 1).toString()
-  }
-
-  private hashLeaf(walletAddress: string, score: any, index: any) {
-    const leafObject = {
-      wallet_address: walletAddress,
-      score: score,
-      index: index,
-    }
-    const leafString = JSON.stringify(leafObject)
-    console.log(leafString)
-    const hashHex = keccak256(leafString)
-    return Buffer.from(hashHex, 'hex')
-  }
-
-  private verifyProof(leaf: any, proof: any[], root: any, index: any) {
-    let computedHash = leaf
-
-    for (const sibling of proof) {
-      if (index % 2 === 0) {
-        computedHash = Buffer.from(
-          keccak256.arrayBuffer(Buffer.concat([computedHash, sibling]))
-        )
-      } else {
-        computedHash = Buffer.from(
-          keccak256.arrayBuffer(Buffer.concat([sibling, computedHash]))
-        )
-      }
-
-      index = Math.floor(index / 2)
-    }
-
-    return computedHash.equals(root)
-  }
-
-  private hexToBuffer(hexString: string) {
-    return Buffer.from(hexString.replace(/^0x/, ''), 'hex')
   }
 }
