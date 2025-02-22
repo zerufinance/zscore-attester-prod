@@ -58,17 +58,14 @@ Validates wallet scores using merkle proofs. Returns:
 #### Example Request
 
 ```bash
-curl -X POST http://localhost:3000/task/validate -H 'Content-Type: application/json' -d '{"proofOfTask": "0xabcdef", "walletAddresses": ["0x123456", "0x789012"]}'
+curl -X POST http://localhost:4002/task/validate -H 'Content-Type: application/json' -d '{"proofOfTask": "0xabcdef"}'
 ```
 
 ### Environment Variables
 
 Ensure the following environment variables are set:
 
-- **ZSCORE_DB_SERVER_URL**: (string) The URL of the database server.
 - **PRIVATE_KEY_ATTESTER**: (string) The private key for attestation.
-- **OTHENTIC_BOOTSTRAP_ID**: (string) The bootstrap ID for the Othentic service.
-- **OTHENTIC_BOOTSTRAP_SEED**: (string) The seed for the Othentic service.
 
 ## Error Handling
 
