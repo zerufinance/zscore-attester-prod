@@ -1,4 +1,4 @@
-# Zscore Attestor
+# zScore Attester
 
 A NestJS server that provides wallet score validation using merkle proofs.
 
@@ -16,11 +16,11 @@ A NestJS server that provides wallet score validation using merkle proofs.
 npm install
 ```
 
-## Configuration
+## Configuration: Environment Variables
 
-Before running the application, make sure to:
+Ensure the following environment variables are set:
 
-1. Configure any environment variables if needed
+- **PRIVATE_KEY_ATTESTER**: (string) The private key for attestation.
 
 ## Running the Application
 
@@ -60,12 +60,6 @@ Validates wallet scores using merkle proofs. Returns:
 ```bash
 curl -X POST http://localhost:4002/task/validate -H 'Content-Type: application/json' -d '{"proofOfTask": "0xabcdef"}'
 ```
-
-### Environment Variables
-
-Ensure the following environment variables are set:
-
-- **PRIVATE_KEY_ATTESTER**: (string) The private key for attestation.
 
 ## Error Handling
 
