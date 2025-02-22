@@ -1,4 +1,3 @@
-version: "3.8"
 x-othentic-cli: &othentic-cli
   env_file:
     - path: .env
@@ -16,37 +15,34 @@ services:
       [
         "node",
         "attester",
-        "/ip4/10.8.0.69/tcp/9877/p2p/${OTHENTIC_BOOTSTRAP_ID}",
+        "/ip4/13.127.183.107/tcp/9877/p2p/${OTHENTIC_BOOTSTRAP_ID}",
         "--avs-webapi",
         "http://10.8.0.42",
         "--l1-chain",
-        "holesky",
+        "mainnet",
         "--l2-chain",
-        "base-sepolia",
+        "${L2:-base}",
       ]
     environment:
       - PRIVATE_KEY=${PRIVATE_KEY_ATTESTER}
       - TASK_PERFORMER=0x0000000000000000000000000000000000000000
     networks:
-      runallservicesforzscore_p2p:
-        ipv4_address: 10.8.0.3
+      p2p:
+        ipv4_address: 10.8.0.2
 
   avs-webapi:
     build:
       context: .
-      dockerfile: ./src/Dockerfile
+      dockerfile: ./Dockerfile.att
     env_file:
       - .env
     networks:
-      runallservicesforzscore_p2p:
+      p2p:
         ipv4_address: 10.8.0.42
 
 networks:
-  runallservicesforzscore_p2p:
-    external: true
-    name: runallservicesforzscore_p2p
+  p2p:
     driver: bridge
     ipam:
       config:
         - subnet: 10.8.0.0/16
-          gateway: 10.8.0.1
