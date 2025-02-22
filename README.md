@@ -20,8 +20,7 @@ npm install
 
 Before running the application, make sure to:
 
-1. Update the external API endpoint in `src/validator/validator.service.ts`
-2. Configure any environment variables if needed
+1. Configure any environment variables if needed
 
 ## Running the Application
 
@@ -36,30 +35,55 @@ npm run start:prod
 
 ## API Endpoints
 
-### GET /validate
+### GET /task/validate
 
 Validates wallet scores using merkle proofs. Returns:
 
 ```json
 {
-  "isApproved": boolean
+  "data": boolean,
+  "error": boolean,
+  "message": string | null
 }
 ```
 
-- Returns `true` if at least 2 out of 3 wallets are successfully validated
-- Returns `false` otherwise
+- Returns `true` if at least 2 out of 3 wallets are successfully validated.
+- Returns `false` otherwise.
+
+#### Request Parameters
+
+- **proofOfTask**: (string) The proof of task to validate wallets against.
+- **walletAddresses**: (array of strings) The list of wallet addresses to validate.
+
+#### Example Request
+
+```bash
+curl -X POST http://localhost:3000/task/validate -H 'Content-Type: application/json' -d '{"proofOfTask": "0xabcdef", "walletAddresses": ["0x123456", "0x789012"]}'
+```
+
+### Environment Variables
+
+Ensure the following environment variables are set:
+
+- **ZSCORE_DB_SERVER_URL**: (string) The URL of the database server.
+- **PRIVATE_KEY_ATTESTER**: (string) The private key for attestation.
+- **OTHENTIC_BOOTSTRAP_ID**: (string) The bootstrap ID for the Othentic service.
+- **OTHENTIC_BOOTSTRAP_SEED**: (string) The seed for the Othentic service.
 
 ## Error Handling
 
 The application includes comprehensive error handling for:
-- External API failures
-- Invalid merkle proofs
-- Invalid input data
-- Server errors
+
+- External API failures.
+- Invalid wallet data received from the external API.
+- Invalid merkle proofs.
+- Invalid input data.
+- Server errors.
 
 ## Logging
 
 Logging is implemented using NestJS's built-in Logger, providing detailed information about:
+
 - API requests
 - Validation results
 - Error details
