@@ -15,7 +15,7 @@ services:
       [
         "node",
         "attester",
-        "/ip4/${OTHENTIC_CLIENT_RPC_ADDRESS}/tcp/9876/p2p/${OTHENTIC_BOOTSTRAP_ID}",
+        "/dns/${OTHENTIC_CLIENT_RPC_ADDRESS}/tcp/9876/p2p/${OTHENTIC_BOOTSTRAP_ID}",
         "--avs-webapi",
         "http://10.8.0.42",
         "--l1-chain",
