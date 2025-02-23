@@ -15,11 +15,11 @@ services:
       [
         "node",
         "attester",
-        "/ip4/13.127.183.107/tcp/9877/p2p/${OTHENTIC_BOOTSTRAP_ID}",
+        "/dns/${OTHENTIC_CLIENT_RPC_ADDRESS}/tcp/9876/p2p/${OTHENTIC_BOOTSTRAP_ID}",
         "--avs-webapi",
         "http://10.8.0.42",
         "--l1-chain",
-        "mainnet",
+        "${L1:-mainnet}",
         "--l2-chain",
         "${L2:-base}",
       ]
