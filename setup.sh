@@ -52,5 +52,10 @@ yes | sudo systemctl enable docker
 docker --version
 docker-compose --version
 
+# Add user to docker group
+echo "Adding user to docker group..."
+sudo usermod -aG docker $USER
+sudo su - $USER
+
 echo "Setup complete! Now you can run docker-compose up --build"
 exit
