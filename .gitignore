@@ -30,3 +30,5 @@ yarn-error.log*
 .npm
 .pnp
 .pnp.js
+
+data

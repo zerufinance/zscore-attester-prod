@@ -22,10 +22,17 @@ services:
         "${L1:-mainnet}",
         "--l2-chain",
         "${L2:-base}",
+        "--metrics",
+        "--p2p.datadir",
+        "data/peerstore/attester1",
       ]
     environment:
       - PRIVATE_KEY=${PRIVATE_KEY_ATTESTER}
       - TASK_PERFORMER=0x0000000000000000000000000000000000000000
+      - LOG_DIR=data/logs/attester1
+    volumes:
+      - ./data/peerstore/attester1:/app/data/peerstore/attester1
+      - ./data/logs/attester1:/app/logs/peerstore/attester1
     networks:
       p2p:
         ipv4_address: 10.8.0.2
