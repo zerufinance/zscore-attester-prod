@@ -15,7 +15,7 @@ services:
       [
         "node",
         "attester",
-        "/dns/${OTHENTIC_CLIENT_RPC_ADDRESS}/tcp/9876/p2p/${OTHENTIC_BOOTSTRAP_ID}",
+        "/dns/${OTHENTIC_CLIENT_RPC_ADDRESS}/tcp/9876/p2p/${OTHENTIC_BOOTSTRAP_ID},/ip4/${AGGREGATOR_IP1}/tcp/9876/p2p/${OTHENTIC_BOOTSTRAP_ID}",
         "--avs-webapi",
         "http://10.8.0.42",
         "--l1-chain",
@@ -25,6 +25,8 @@ services:
         "--metrics",
         "--p2p.datadir",
         "data/peerstore/attester1",
+        "--p2p.discovery-interval",
+        "30000",
       ]
     environment:
       - PRIVATE_KEY=${PRIVATE_KEY_ATTESTER}
