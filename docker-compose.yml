@@ -26,7 +26,7 @@ services:
         "--p2p.datadir",
         "data/peerstore/attester1",
         "--p2p.discovery-interval",
-        "30000",
+        "300000",
       ]
     environment:
       - PRIVATE_KEY=${PRIVATE_KEY_ATTESTER}
