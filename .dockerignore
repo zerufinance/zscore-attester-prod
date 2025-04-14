@@ -11,3 +11,4 @@ test
 .env.local
 .env.development
 .env.production
+data
