@@ -28,7 +28,7 @@ services:
         "--p2p.discovery-interval",
         "300000",
         "--announced-addresses",
-        "/ip4/${AGGREGATOR_IP1}/tcp/9876/p2p/12D3KooWSKBSc2e5S1VVRoX36F9qyHmsdFP726b4eJLVAqcf6FHg",
+        "/ip4/${ATTESTER_PUBLIC_IP_ADDRESS}/tcp/9876/p2p/${ATTESTER_PEER_ID}",
         "--status-check-interval",
         "900000"
       ]
